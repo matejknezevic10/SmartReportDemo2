@@ -1,0 +1,8 @@
+{
+  "name": "SmartReport",
+  "description": "Die smarte Plattform für Außendienst-Profis zur Erstellung von Berichten und Angeboten in Sekunden mit KI.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
