@@ -185,6 +185,37 @@ const ReportEditor: React.FC<ReportEditorProps> = ({ report, currentUser, isOnli
         }
       });
 
+      // Grundriss-Skizze (vor Fotos)
+      if (report.floorplanSketch) {
+        doc.addPage();
+        yPos = 30;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(saneoNavy[0], saneoNavy[1], saneoNavy[2]);
+        doc.text('GRUNDRISS-SKIZZE', margin, yPos);
+        yPos += 5;
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(148, 163, 184);
+        doc.text('Technische Vor-Ort-Dokumentation mit Maßangaben und Schadenspunkten', margin, yPos + 8);
+        yPos += 20;
+
+        try {
+          // Skizze zentriert und groß darstellen
+          const sketchWidth = pageWidth - (margin * 2);
+          const sketchHeight = sketchWidth * 0.75; // 4:3 Ratio
+          
+          doc.setDrawColor(226, 232, 240);
+          doc.setLineWidth(0.5);
+          doc.rect(margin - 1, yPos - 1, sketchWidth + 2, sketchHeight + 2);
+          
+          doc.addImage(report.floorplanSketch, 'PNG', margin, yPos, sketchWidth, sketchHeight);
+        } catch (e) { 
+          console.error('Fehler beim Einfügen der Skizze:', e); 
+        }
+      }
+
       // Bilderanhang
       if (report.images && report.images.length > 0) {
         doc.addPage();
@@ -389,23 +420,41 @@ const ReportEditor: React.FC<ReportEditorProps> = ({ report, currentUser, isOnli
           />
         </div>
 
-        {report.images && report.images.length > 0 && (
+        {/* Sidebar for images and sketch */}
+        {(report.images && report.images.length > 0) || report.floorplanSketch ? (
           <div className="w-full md:w-80 bg-white border-l p-8 overflow-y-auto">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-2">
-              <ImageIcon size={16} /> Fotodokumentation ({report.images.length})
-            </h4>
-            <div className="space-y-4">
-              {report.images.map((img, idx) => (
-                <div key={idx} className="relative aspect-[4/3] rounded-3xl overflow-hidden border-2 border-slate-50 shadow-sm group">
-                  <img src={`data:${img.mimeType};base64,${img.data}`} className="w-full h-full object-cover" alt={`Beweis ${idx}`} />
-                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                    <button onClick={() => setEditingImageIndex(idx)} className="p-3 bg-white text-indigo-600 rounded-2xl shadow-xl hover:scale-110 active:scale-95"><Edit3 size={24} /></button>
-                  </div>
+            {/* Floorplan Sketch */}
+            {report.floorplanSketch && (
+              <div className="mb-8">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Edit3 size={16} /> Grundriss-Skizze
+                </h4>
+                <div className="rounded-2xl overflow-hidden border-2 border-indigo-100 shadow-sm">
+                  <img src={report.floorplanSketch} className="w-full object-contain bg-white" alt="Grundriss" />
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+            
+            {/* Photo documentation */}
+            {report.images && report.images.length > 0 && (
+              <>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-2">
+                  <ImageIcon size={16} /> Fotodokumentation ({report.images.length})
+                </h4>
+                <div className="space-y-4">
+                  {report.images.map((img, idx) => (
+                    <div key={idx} className="relative aspect-[4/3] rounded-3xl overflow-hidden border-2 border-slate-50 shadow-sm group">
+                      <img src={`data:${img.mimeType};base64,${img.data}`} className="w-full h-full object-cover" alt={`Beweis ${idx}`} />
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                        <button onClick={() => setEditingImageIndex(idx)} className="p-3 bg-white text-indigo-600 rounded-2xl shadow-xl hover:scale-110 active:scale-95"><Edit3 size={24} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className="p-8 border-t bg-white flex flex-col sm:flex-row justify-between items-center gap-8 shadow-2xl">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, LayoutDashboard, History, Loader2, Camera, X, BookOpen, AlertTriangle, CheckCircle, Briefcase, LogOut, Mic, MicOff, Sparkles, Database } from 'lucide-react';
+import { Plus, Search, LayoutDashboard, History, Loader2, Camera, X, BookOpen, AlertTriangle, CheckCircle, Briefcase, LogOut, Mic, MicOff, Sparkles, Database, PenTool } from 'lucide-react';
 import { Report, ReportType, GenerationInput, Template, User, UserRole, ReportImage } from './types';
 import { generateProfessionalReport } from './services/geminiService';
 import ReportCard from './components/ReportCard';
@@ -7,6 +7,7 @@ import ReportEditor from './components/ReportEditor';
 import TemplateManager from './components/TemplateManager';
 import BusinessDashboard from './components/BusinessDashboard';
 import Login from './components/Login';
+import FloorplanSketch from './components/FloorplanSketch';
 import { hashPassword } from './utils/security';
 
 const App: React.FC = () => {
@@ -25,6 +26,8 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'reports' | 'dashboard'>('reports');
   const [isRecording, setIsRecording] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isSketchOpen, setIsSketchOpen] = useState(false);
+  const [sketchData, setSketchData] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -293,6 +296,7 @@ Austausch des gesamten Leitungsabschnitts empfohlen. Geschätzte Kosten: 2.800 -
         date: new Date().toLocaleDateString('de-DE'),
         status: 'Draft',
         images: formInput.images,
+        floorplanSketch: sketchData || undefined,
         createdById: currentUser.id,
         createdByName: currentUser.name,
         isOfflineDraft: false,
@@ -304,6 +308,7 @@ Austausch des gesamten Leitungsabschnitts empfohlen. Geschätzte Kosten: 2.800 -
       setReports([newReport, ...reports]);
       setSelectedReportId(newReport.id);
       setIsCreating(false);
+      setSketchData(null);
       setFormInput({ type: ReportType.DAMAGE, keywords: '', customerName: '', additionalInfo: '', images: [] });
     } catch (error) {
       console.error('Report generation failed:', error);
@@ -507,6 +512,36 @@ Austausch des gesamten Leitungsabschnitts empfohlen. Geschätzte Kosten: 2.800 -
                     <input type="file" ref={fileInputRef} multiple accept="image/*" onChange={handleFileChange} className="hidden" />
                   </div>
                 </div>
+
+                {/* Grundriss-Skizze */}
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-4 ml-2 tracking-widest">Grundriss-Skizze</label>
+                  {sketchData ? (
+                    <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-200 bg-indigo-50">
+                      <img src={sketchData} className="w-full h-40 object-contain bg-white" alt="Grundriss" />
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 hover:opacity-100 flex items-center justify-center gap-2 transition-all">
+                        <button onClick={() => setIsSketchOpen(true)} className="p-2 bg-white text-indigo-600 rounded-xl shadow-lg hover:scale-110">
+                          <PenTool size={20} />
+                        </button>
+                        <button onClick={() => setSketchData(null)} className="p-2 bg-white text-red-500 rounded-xl shadow-lg hover:scale-110">
+                          <X size={20} />
+                        </button>
+                      </div>
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-indigo-600 text-white text-[9px] font-black uppercase rounded-lg">
+                        Skizze vorhanden
+                      </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => setIsSketchOpen(true)}
+                      className="w-full p-6 border-2 border-dashed border-slate-200 rounded-2xl hover:bg-indigo-50 hover:border-indigo-300 transition-all text-slate-400 hover:text-indigo-600 flex flex-col items-center gap-2 group"
+                    >
+                      <PenTool size={28} className="group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-black uppercase">Grundriss zeichnen</span>
+                      <span className="text-[10px] text-slate-400">Räume, Maße & Schadenspunkte skizzieren</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             <div className="p-8 bg-slate-50 border-t flex gap-4">
@@ -536,6 +571,18 @@ Austausch des gesamten Leitungsabschnitts empfohlen. Geschätzte Kosten: 2.800 -
             setReports(reports.map(r => r.id === updated.id ? updated : r));
             setSelectedReportId(null);
           }}
+        />
+      )}
+
+      {/* Floorplan Sketch Tool */}
+      {isSketchOpen && (
+        <FloorplanSketch
+          onSave={(imageData) => {
+            setSketchData(imageData);
+            setIsSketchOpen(false);
+          }}
+          onClose={() => setIsSketchOpen(false)}
+          existingSketch={sketchData || undefined}
         />
       )}
     </div>

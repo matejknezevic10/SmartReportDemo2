@@ -1,181 +1,221 @@
-import { GoogleGenAI } from "@google/genai";
-import { ReportType, GenerationInput } from "../types";
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GenerationInput, ReportType } from '../types';
 
-/**
- * WICHTIG: API-Key Handling
- * 
- * In einer Produktionsumgebung sollte der API-Key NIEMALS im Frontend sein!
- * 
- * Empfohlene Architektur:
- * 1. Erstelle einen Backend-Proxy (z.B. mit Express, Deno, oder Cloudflare Workers)
- * 2. Der Proxy hält den API-Key sicher auf dem Server
- * 3. Das Frontend ruft deinen Proxy auf, nicht direkt die Gemini API
- * 
- * Für diese Demo verwenden wir den direkten API-Aufruf mit Vite's env handling.
- * Stelle sicher, dass die .env.local Datei NICHT ins Git Repository kommt!
- */
+// @ts-ignore - Vite specific
+const API_KEY = import.meta.env?.VITE_GEMINI_API_KEY || '';
 
-// Für Vite: import.meta.env statt process.env
-const getApiKey = (): string => {
-  // Vite erwartet VITE_ prefix für env variablen
-  // @ts-ignore - Vite specific
-  const key = import.meta.env?.VITE_GEMINI_API_KEY;
-  
-  if (!key) {
-    console.error('❌ VITE_GEMINI_API_KEY nicht gesetzt!');
-    console.error('Erstelle eine .env.local Datei mit:');
-    console.error('VITE_GEMINI_API_KEY=dein_api_key_hier');
-    throw new Error('API Key nicht konfiguriert');
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+
+interface ReportJSON {
+  report_title: string;
+  location_context: string;
+  findings: {
+    heading: string;
+    content: string;
+  }[];
+  recommendations: string[];
+  severity_level: 'Niedrig' | 'Mittel' | 'Hoch';
+}
+
+function getReportTypeContext(type: ReportType): string {
+  switch (type) {
+    case ReportType.DAMAGE:
+      return 'Schadensbericht (z.B. Wasserschaden, Brandschaden, Sturmschaden, Schimmelbefall)';
+    case ReportType.INSPECTION:
+      return 'Inspektionsbericht (z.B. Zustandsprüfung, Wartungsinspektion, Bauabnahme)';
+    case ReportType.OFFER:
+      return 'Angebotsbericht mit Kostenschätzung für Sanierungsmaßnahmen';
+    default:
+      return 'Technischer Bericht';
   }
-  
-  return key;
-};
+}
 
-export const generateProfessionalReport = async (input: GenerationInput): Promise<string> => {
-  const apiKey = getApiKey();
-  const ai = new GoogleGenAI({ apiKey });
-  
-  const typeLabels: Record<ReportType, string> = {
-    [ReportType.DAMAGE]: "Schadensmeldung / Technisches Gutachten",
-    [ReportType.INSPECTION]: "Inspektionsbericht / Prüfprotokoll",
-    [ReportType.OFFER]: "Angebot / Kostenvoranschlag"
-  };
-
-  const systemPrompt = `
-Du bist ein erfahrener Experte für das Schreiben von professionellen Geschäftsberichten und Gutachten im Außendienst für die Firma SANEO Schadenservice GmbH.
-
-Deine Aufgabe ist es, Stichpunkte und Bilder in eine formelle, perfekt strukturierte Version eines Berichts zu verwandeln.
-
-FORMAT-REGELN (SEHR WICHTIG):
-1. Nutze KEINE Markdown-Sonderzeichen wie Sternchen (**) oder Unterstriche (__) für Fettungen. 
-2. Nutze ausschließlich klare Textbeschriftungen gefolgt von einem Doppelpunkt (z.B. "Kunde: Müller" statt "**Kunde:** Müller").
-3. Nutze einfache Rauten (#) NUR für Hauptüberschriften.
-4. Der Ton ist hochprofessionell, präzise und sachlich.
-5. Der Berichtstyp ist: ${typeLabels[input.type]}.
-6. Kunde/Objekt: ${input.customerName}.
-7. Aktuelles Datum: ${new Date().toLocaleDateString('de-DE')}.
-
-STRUKTUR FÜR ${typeLabels[input.type].toUpperCase()}:
-${input.type === ReportType.DAMAGE ? `
-- Kopfdaten: Typ, Kunde, Datum, Einsatzort
-- Schadensbeschreibung: Was ist passiert?
-- Technische Befundaufnahme: Detaillierte Analyse
-- Sofortmaßnahmen: Was wurde vor Ort getan?
-- Schadensumfang: Betroffene Bereiche/Materialien
-- Empfehlung: Nächste Schritte, geschätzte Kosten
-` : input.type === ReportType.INSPECTION ? `
-- Kopfdaten: Typ, Kunde, Datum, Prüfobjekt
-- Anlagenbeschreibung: Was wurde geprüft?
-- Prüfergebnisse: Messwerte, Zustandsbewertung
-- Mängelliste: Gefundene Probleme (falls vorhanden)
-- Bewertung: Gesamtzustand (Ampelsystem)
-- Empfehlung: Wartungshinweise, nächster Prüftermin
-` : `
-- Kopfdaten: Typ, Kunde, Datum, Projekt
-- Projektbeschreibung: Was soll gemacht werden?
-- Leistungsumfang: Detaillierte Auflistung
-- Materialliste: Benötigte Materialien
-- Kostenaufstellung: Arbeit + Material
-- Zeitrahmen: Geschätzte Dauer
-- Zahlungsbedingungen: Standard-Konditionen
-`}
-
-WICHTIG ZU DEN BILDERN:
-${input.images.length > 0 ? `
-- Dir liegen ${input.images.length} Foto(s) vor.
-- Analysiere jedes Bild genau und beziehe dich im Text direkt darauf (z.B. "Wie in Abbildung 1 ersichtlich...").
-- Beschreibe visuelle Beweise so, dass sie für Dritte (Versicherung, Auftraggeber) nachvollziehbar sind.
-` : `
-- Es wurden keine Fotos bereitgestellt.
-- Weise im Bericht darauf hin, dass eine fotografische Dokumentation empfohlen wird.
-`}
-
-Gib NUR den fertigen, sauberen Berichtstext zurück, ohne zusätzliche Kommentare oder Erklärungen.
-  `.trim();
-
-  const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
-    {
-      text: `
-Erstelle ein(e) ${typeLabels[input.type]} für "${input.customerName}".
-
-Stichworte/Befund: "${input.keywords}"
-${input.additionalInfo ? `Zusätzliche Informationen: ${input.additionalInfo}` : ''}
-
-Bitte den vollständigen, professionellen Bericht ausgeben.
-      `.trim()
-    }
-  ];
-
-  // Bilder hinzufügen
-  input.images.forEach((img, index) => {
-    parts.push({ text: `\n\nAbbildung ${index + 1}:` });
-    parts.push({
-      inlineData: {
-        data: img.data,
-        mimeType: img.mimeType
-      }
-    });
+function formatJSONToMarkdown(json: ReportJSON, input: GenerationInput): string {
+  const date = new Date().toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
   });
 
+  let markdown = `# ${json.report_title}\n\n`;
+  
+  markdown += `**Datum:** ${date}  \n`;
+  markdown += `**Kunde/Objekt:** ${input.customerName}  \n`;
+  markdown += `**Erstellt von:** ${input.companyName || 'Fachbetrieb'}  \n`;
+  markdown += `**Örtlichkeit:** ${json.location_context}  \n`;
+  markdown += `**Schadensklassifizierung:** ${json.severity_level}\n\n`;
+  
+  markdown += `---\n\n`;
+  
+  markdown += `## Befundaufnahme\n\n`;
+  for (const finding of json.findings) {
+    markdown += `### ${finding.heading}\n\n`;
+    markdown += `${finding.content}\n\n`;
+  }
+  
+  markdown += `---\n\n`;
+  
+  markdown += `## Empfohlene Maßnahmen\n\n`;
+  for (let i = 0; i < json.recommendations.length; i++) {
+    markdown += `${i + 1}. ${json.recommendations[i]}\n`;
+  }
+  markdown += '\n';
+  
+  markdown += `---\n\n`;
+  
+  markdown += `*Dieser Bericht wurde nach bestem Wissen und Gewissen erstellt. Änderungen und Ergänzungen nach eingehender Prüfung vor Ort vorbehalten.*\n\n`;
+  markdown += `*${input.companyName || 'Fachbetrieb'} • ${date}*`;
+  
+  return markdown;
+}
+
+export async function generateProfessionalReport(input: GenerationInput): Promise<string> {
+  if (!genAI) {
+    return generateFallbackReport(input);
+  }
+
   try {
-    const response = await ai.models.generateContent({
-      // Korrigierter Modellname - aktuelle Gemini Modelle:
-      // - gemini-1.5-pro (beste Qualität)
-      // - gemini-1.5-flash (schneller, günstiger)
-      // - gemini-2.0-flash-exp (experimentell, sehr schnell)
+    const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.0-flash',
-      contents: { parts },
-      config: {
-        systemInstruction: systemPrompt,
-        temperature: 0.7,
-        maxOutputTokens: 4096,
-      },
+      generationConfig: {
+        maxOutputTokens: 8192,
+      }
     });
+    
+    const reportTypeContext = getReportTypeContext(input.type);
 
-    const text = response.text;
-    
-    if (!text || text.trim().length === 0) {
-      throw new Error("Leere Antwort von der KI erhalten");
+    const prompt = `Du bist ein technischer Sachverständiger und erfahrener Gutachter für Gebäudeschäden, Sanierung und Bautechnik. Du schreibst seit über 20 Jahren professionelle Gutachten und Berichte für Versicherungen, Hausverwaltungen und Privatkunden.
+
+Deine Aufgabe ist es, aus den folgenden Stichpunkten und ggf. Fotos einen professionellen ${reportTypeContext} zu generieren.
+
+**Objekt/Kunde:** ${input.customerName}
+**Firma:** ${input.companyName || 'Fachbetrieb'}
+**Befund-Stichpunkte:** ${input.keywords}
+${input.additionalInfo ? `**Zusätzliche Informationen:** ${input.additionalInfo}` : ''}
+
+WICHTIGE ANWEISUNGEN FÜR DEN BERICHT:
+- Schreibe im sachlichen, technischen Stil eines Vollprofis
+- Verwende Passiv-Formulierungen (z.B. "Es wurde festgestellt...", "Der Schaden ist zurückzuführen auf...")
+- Sei SEHR detailliert und ausführlich bei den Befunden
+- Beschreibe technische Zusammenhänge und mögliche Ursachen
+- Bei Bildern: Analysiere sie genau und beschreibe sichtbare Schäden, Materialien, Verfärbungen, Feuchtigkeit etc.
+- Gib konkrete, umsetzbare Handlungsempfehlungen
+- Schätze die Dringlichkeit/Schwere realistisch ein
+
+Ausgabeformat: JSON. Halte dich STRIKT an dieses Schema. Schreibe KEINE Einleitungssätze vor dem JSON und KEINE Erklärungen danach. NUR das JSON.
+
+Das JSON muss folgende Struktur haben:
+{
+  "report_title": "Ein professioneller Titel für den Bericht (z.B. 'Schadensbericht Wasserschaden Kellergeschoss')",
+  "location_context": "Erkannter/vermuteter Ort basierend auf den Informationen (z.B. 'Untergeschoss / Heizungsraum' oder 'Erdgeschoss / Badezimmer')",
+  "findings": [
+    {
+      "heading": "Überschrift des Befunds (z.B. 'Zustand der Heizungsanlage' oder 'Feuchtigkeitsschäden an der Wandfläche')",
+      "content": "Detaillierter, ausführlicher Text im Passiv. Mindestens 3-4 Sätze pro Befund. Beschreibe genau was festgestellt wurde, welche Materialien betroffen sind, welche Ursachen vermutet werden, und welche Folgeschäden drohen könnten."
     }
+  ],
+  "recommendations": [
+    "Konkrete Maßnahme 1 mit Begründung",
+    "Konkrete Maßnahme 2 mit Begründung",
+    "Weitere Maßnahmen..."
+  ],
+  "severity_level": "Niedrig | Mittel | Hoch"
+}
+
+WICHTIG: 
+- Erstelle mindestens 2-4 verschiedene Findings je nach Komplexität
+- Jeder Finding-Content sollte ausführlich sein (mindestens 50-100 Wörter)
+- Die Recommendations sollten spezifisch und umsetzbar sein (mindestens 3-5 Empfehlungen)
+- Antworte NUR mit dem JSON, ohne Markdown-Codeblöcke oder Backticks`;
+
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [{ text: prompt }];
     
-    return text;
+    if (input.images && input.images.length > 0) {
+      for (const img of input.images) {
+        parts.push({
+          inlineData: {
+            mimeType: img.mimeType,
+            data: img.data
+          }
+        });
+      }
+      parts.push({ 
+        text: '\n\nAnalysiere die beigefügten Fotos sehr genau. Beschreibe alle sichtbaren Schäden, Verfärbungen, Feuchtigkeit, Materialzustände und andere relevante Details in den Findings.' 
+      });
+    }
+
+    const result = await model.generateContent(parts);
+    const response = await result.response;
+    let text = response.text().trim();
+    
+    // Remove potential markdown code blocks
+    text = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    
+    try {
+      const reportJSON: ReportJSON = JSON.parse(text);
+      return formatJSONToMarkdown(reportJSON, input);
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.log('Raw response:', text);
+      return text || generateFallbackReport(input);
+    }
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    
-    // Spezifischere Fehlermeldungen
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        throw new Error("API-Schlüssel ungültig. Bitte in .env.local prüfen.");
-      }
-      if (error.message.includes('quota') || error.message.includes('rate')) {
-        throw new Error("API-Limit erreicht. Bitte später erneut versuchen.");
-      }
-      if (error.message.includes('network') || error.message.includes('fetch')) {
-        throw new Error("Netzwerkfehler. Bitte Internetverbindung prüfen.");
-      }
-    }
-    
-    throw new Error("Konnte Bericht nicht generieren. Bitte später erneut versuchen.");
+    console.error('Gemini API Error:', error);
+    return generateFallbackReport(input);
   }
-};
+}
 
-/**
- * Prüft ob die API erreichbar ist (für Health-Checks)
- */
-export const checkApiHealth = async (): Promise<boolean> => {
-  try {
-    const apiKey = getApiKey();
-    const ai = new GoogleGenAI({ apiKey });
-    
-    // Minimaler API-Call zum Testen
-    await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
-      contents: { parts: [{ text: 'Test' }] },
-      config: { maxOutputTokens: 10 }
-    });
-    
-    return true;
-  } catch {
-    return false;
-  }
-};
+function generateFallbackReport(input: GenerationInput): string {
+  const date = new Date().toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+
+  const typeLabels: Record<string, string> = {
+    'DAMAGE': 'Schadensbericht',
+    'INSPECTION': 'Inspektionsbericht',
+    'OFFER': 'Angebot'
+  };
+
+  const reportType = typeLabels[input.type] || 'Bericht';
+  const keywords = input.keywords.split(/[,;.]/).map(k => k.trim()).filter(k => k);
+
+  return `# ${reportType} — ${input.customerName}
+
+**Datum:** ${date}  
+**Kunde/Objekt:** ${input.customerName}  
+**Erstellt von:** ${input.companyName || 'Fachbetrieb'}  
+**Schadensklassifizierung:** Ausstehend (manuelle Prüfung erforderlich)
+
+---
+
+## Befundaufnahme
+
+### Festgestellte Sachverhalte
+
+Im Rahmen der Ortsbegehung wurden folgende Sachverhalte dokumentiert und einer ersten Bewertung unterzogen:
+
+${keywords.map(k => `- ${k}`).join('\n')}
+
+${input.additionalInfo ? `\n### Zusätzliche Hinweise\n\n${input.additionalInfo}` : ''}
+
+Es wird empfohlen, die festgestellten Punkte durch einen qualifizierten Fachbetrieb eingehend prüfen zu lassen, um das Schadensausmaß vollständig zu erfassen und geeignete Sanierungsmaßnahmen einzuleiten.
+
+---
+
+## Empfohlene Maßnahmen
+
+1. Detaillierte Schadensanalyse durch qualifiziertes Fachpersonal vor Ort
+2. Fotografische Dokumentation aller betroffenen Bereiche zur Beweissicherung
+3. Erstellung eines detaillierten Sanierungskonzepts mit Kostenschätzung
+4. Abstimmung der weiteren Vorgehensweise mit dem Auftraggeber
+5. Ggf. Einschaltung der Gebäudeversicherung zur Schadensregulierung
+
+---
+
+*Dieser Bericht wurde automatisch erstellt. Eine abschließende Bewertung durch einen Sachverständigen vor Ort wird empfohlen.*
+
+*${input.companyName || 'Fachbetrieb'} • ${date}*
+`;
+}

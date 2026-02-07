@@ -42,6 +42,7 @@ export interface Report {
   date: string;
   status: 'Draft' | 'Sent' | 'Completed';
   images?: ReportImage[];
+  floorplanSketch?: string; // Base64 encoded sketch image
   createdById: string; 
   createdByName: string;
   isOfflineDraft?: boolean;
@@ -75,6 +76,7 @@ export interface GenerationInput {
   type: ReportType;
   keywords: string;
   customerName: string;
+  companyName?: string;
   additionalInfo?: string;
   images: ReportImage[];
   /** Optional: Template-ID für strukturierte Generierung */
