@@ -503,9 +503,12 @@ const FloorplanSketch: React.FC<FloorplanSketchProps> = ({ onSave, onClose, exis
                   key={key}
                   onClick={() => setSelectedMarker(key as typeof selectedMarker)}
                   className={`w-12 h-12 flex flex-col items-center justify-center rounded-xl transition-all ${
-                    selectedMarker === key ? 'ring-2 ring-offset-2' : ''
+                    selectedMarker === key ? 'ring-2 ring-offset-2 ring-current' : ''
                   }`}
-                  style={{ backgroundColor: info.color + '20', color: info.color, ringColor: info.color }}
+                  style={{ 
+                    backgroundColor: info.color + '20', 
+                    color: info.color
+                  }}
                   title={info.label}
                 >
                   <info.icon size={18} />
