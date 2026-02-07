@@ -123,7 +123,7 @@ Bitte den vollständigen, professionellen Bericht ausgeben.
       // - gemini-1.5-pro (beste Qualität)
       // - gemini-1.5-flash (schneller, günstiger)
       // - gemini-2.0-flash-exp (experimentell, sehr schnell)
-      model: 'gemini-1.5-pro',
+      model: 'gemini-2.0-flash',
       contents: { parts },
       config: {
         systemInstruction: systemPrompt,
