@@ -80,11 +80,3 @@ export interface GenerationInput {
   /** Optional: Template-ID für strukturierte Generierung */
   templateId?: string;
 }
-
-// TypeScript Declarations für Web Speech API
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}

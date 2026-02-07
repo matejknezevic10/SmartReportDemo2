@@ -11,10 +11,6 @@ import { ReportType, GenerationInput } from "../types";
  * 2. Der Proxy hält den API-Key sicher auf dem Server
  * 3. Das Frontend ruft deinen Proxy auf, nicht direkt die Gemini API
  * 
- * Beispiel Backend-Endpoint:
- * POST /api/generate-report
- * Body: { type, keywords, customerName, images }
- * 
  * Für diese Demo verwenden wir den direkten API-Aufruf mit Vite's env handling.
  * Stelle sicher, dass die .env.local Datei NICHT ins Git Repository kommt!
  */
@@ -22,7 +18,8 @@ import { ReportType, GenerationInput } from "../types";
 // Für Vite: import.meta.env statt process.env
 const getApiKey = (): string => {
   // Vite erwartet VITE_ prefix für env variablen
-  const key = import.meta.env.VITE_GEMINI_API_KEY;
+  // @ts-ignore - Vite specific
+  const key = import.meta.env?.VITE_GEMINI_API_KEY;
   
   if (!key) {
     console.error('❌ VITE_GEMINI_API_KEY nicht gesetzt!');

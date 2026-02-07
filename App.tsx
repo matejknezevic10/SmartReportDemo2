@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Settings, LayoutDashboard, History, Loader2, Camera, X, BookOpen, AlertTriangle, CheckCircle, Briefcase, LogOut, Mic, MicOff, Sparkles, Database } from 'lucide-react';
+import { Plus, Search, LayoutDashboard, History, Loader2, Camera, X, BookOpen, AlertTriangle, CheckCircle, Briefcase, LogOut, Mic, MicOff, Sparkles, Database } from 'lucide-react';
 import { Report, ReportType, GenerationInput, Template, User, UserRole, ReportImage } from './types';
 import { generateProfessionalReport } from './services/geminiService';
 import ReportCard from './components/ReportCard';
@@ -27,7 +27,8 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
 
   const [formInput, setFormInput] = useState<GenerationInput>({
     type: ReportType.DAMAGE,
@@ -114,14 +115,14 @@ const App: React.FC = () => {
     }
 
     // Speech Recognition Setup
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+      const recognition = new SpeechRecognitionAPI();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'de-DE';
       
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
+      recognition.onresult = (event: any) => {
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
@@ -149,7 +150,11 @@ const App: React.FC = () => {
       
       // Speech Recognition cleanup
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // Ignore errors when stopping
+        }
         recognitionRef.current.onresult = null;
         recognitionRef.current.onend = null;
         recognitionRef.current.onerror = null;
