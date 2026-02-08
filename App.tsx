@@ -465,97 +465,104 @@ Austausch des gesamten Leitungsabschnitts empfohlen. Geschätzte Kosten: 2.800 -
 
       {/* Create Report Modal */}
       {isCreating && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="p-10">
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black tracking-tight uppercase">Neuer Bericht</h3>
-                <button onClick={() => setIsCreating(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={24}/></button>
-              </div>
-              
-              <div className="space-y-6">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full sm:max-w-lg sm:rounded-[3rem] rounded-t-[2rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in duration-300 max-h-[90vh] flex flex-col">
+            {/* Header - fixed */}
+            <div className="p-5 sm:p-8 border-b bg-white flex justify-between items-center shrink-0">
+              <h3 className="text-xl sm:text-2xl font-black tracking-tight uppercase">Neuer Bericht</h3>
+              <button onClick={() => setIsCreating(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={24}/></button>
+            </div>
+            
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8">
+              <div className="space-y-5">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 tracking-widest">Kunde / Objekt</label>
-                  <input type="text" placeholder="z.B. Müller, Berlin" className="w-full border-2 border-slate-100 rounded-2xl p-5 bg-slate-50 focus:border-indigo-600 outline-none font-bold transition-colors" value={formInput.customerName} onChange={(e) => setFormInput({...formInput, customerName: e.target.value})} />
+                  <input type="text" placeholder="z.B. Müller, Berlin" className="w-full border-2 border-slate-100 rounded-2xl p-4 bg-slate-50 focus:border-indigo-600 outline-none font-bold transition-colors" value={formInput.customerName} onChange={(e) => setFormInput({...formInput, customerName: e.target.value})} />
                 </div>
 
                 <div className="relative">
                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 tracking-widest">Befund (Stichpunkte)</label>
                   <div className="relative">
-                    <textarea rows={4} placeholder="Beschreibe den Befund..." className="w-full border-2 border-slate-100 rounded-3xl p-6 bg-slate-50 focus:border-indigo-600 outline-none font-bold resize-none transition-colors" value={formInput.keywords} onChange={(e) => setFormInput({...formInput, keywords: e.target.value})} />
-                    <button onClick={toggleRecording} className={`absolute right-4 bottom-4 p-4 rounded-2xl shadow-lg transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-                      {isRecording ? <MicOff size={24} /> : <Mic size={24} />}
+                    <textarea rows={3} placeholder="Beschreibe den Befund..." className="w-full border-2 border-slate-100 rounded-2xl p-4 pr-16 bg-slate-50 focus:border-indigo-600 outline-none font-bold resize-none transition-colors" value={formInput.keywords} onChange={(e) => setFormInput({...formInput, keywords: e.target.value})} />
+                    <button onClick={toggleRecording} className={`absolute right-3 bottom-3 p-3 rounded-xl shadow-lg transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+                      {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
                     </button>
                   </div>
                   {isRecording && (
                     <p className="text-xs text-red-500 font-bold mt-2 ml-2 animate-pulse">
-                      🎤 Aufnahme läuft... Sprich jetzt.
+                      🎤 Aufnahme läuft...
                     </p>
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-4 ml-2 tracking-widest">Beweisfotos ({formInput.images.length}/10)</label>
-                  <div className="grid grid-cols-4 gap-3">
-                    {formInput.images.map((img, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-50 group shadow-sm">
-                        <img src={`data:${img.mimeType};base64,${img.data}`} className="w-full h-full object-cover" alt="Beweis" />
-                        <button onClick={() => removeImage(idx)} className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"><X size={12}/></button>
+                {/* Fotos & Skizze in kompakterem Layout */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Fotos */}
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Fotos ({formInput.images.length}/10)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {formInput.images.slice(0, 3).map((img, idx) => (
+                        <div key={idx} className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-slate-100 group">
+                          <img src={`data:${img.mimeType};base64,${img.data}`} className="w-full h-full object-cover" alt="Beweis" />
+                          <button onClick={() => removeImage(idx)} className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><X size={14}/></button>
+                        </div>
+                      ))}
+                      {formInput.images.length > 3 && (
+                        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                          +{formInput.images.length - 3}
+                        </div>
+                      )}
+                      {formInput.images.length < 10 && (
+                        <button onClick={() => fileInputRef.current?.click()} className="w-12 h-12 flex items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-200 transition-all text-slate-400 hover:text-indigo-600">
+                          <Camera size={20} />
+                        </button>
+                      )}
+                      <input type="file" ref={fileInputRef} multiple accept="image/*" onChange={handleFileChange} className="hidden" />
+                    </div>
+                  </div>
+
+                  {/* Grundriss-Skizze */}
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Skizze</label>
+                    {sketchData ? (
+                      <div className="relative h-12 rounded-xl overflow-hidden border-2 border-indigo-200 bg-indigo-50 flex items-center px-3 gap-2">
+                        <div className="w-8 h-8 rounded bg-white flex items-center justify-center">
+                          <PenTool size={14} className="text-indigo-600" />
+                        </div>
+                        <span className="text-[10px] font-bold text-indigo-600 flex-1">Vorhanden</span>
+                        <button onClick={() => setIsSketchOpen(true)} className="p-1.5 hover:bg-indigo-100 rounded-lg text-indigo-600">
+                          <PenTool size={14} />
+                        </button>
+                        <button onClick={() => setSketchData(null)} className="p-1.5 hover:bg-red-100 rounded-lg text-red-500">
+                          <X size={14} />
+                        </button>
                       </div>
-                    ))}
-                    {formInput.images.length < 10 && (
-                      <button onClick={() => fileInputRef.current?.click()} className="aspect-square flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl hover:bg-indigo-50 hover:border-indigo-200 transition-all text-slate-400 hover:text-indigo-600 group">
-                        <Camera size={24} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-black uppercase mt-1">Hinzufügen</span>
+                    ) : (
+                      <button 
+                        onClick={() => setIsSketchOpen(true)}
+                        className="w-full h-12 border-2 border-dashed border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all text-slate-400 hover:text-indigo-600 flex items-center justify-center gap-2"
+                      >
+                        <PenTool size={18} />
+                        <span className="text-xs font-bold">Zeichnen</span>
                       </button>
                     )}
-                    <input type="file" ref={fileInputRef} multiple accept="image/*" onChange={handleFileChange} className="hidden" />
                   </div>
                 </div>
-
-                {/* Grundriss-Skizze */}
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-4 ml-2 tracking-widest">Grundriss-Skizze</label>
-                  {sketchData ? (
-                    <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-200 bg-indigo-50">
-                      <img src={sketchData} className="w-full h-40 object-contain bg-white" alt="Grundriss" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 hover:opacity-100 flex items-center justify-center gap-2 transition-all">
-                        <button onClick={() => setIsSketchOpen(true)} className="p-2 bg-white text-indigo-600 rounded-xl shadow-lg hover:scale-110">
-                          <PenTool size={20} />
-                        </button>
-                        <button onClick={() => setSketchData(null)} className="p-2 bg-white text-red-500 rounded-xl shadow-lg hover:scale-110">
-                          <X size={20} />
-                        </button>
-                      </div>
-                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-indigo-600 text-white text-[9px] font-black uppercase rounded-lg">
-                        Skizze vorhanden
-                      </div>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => setIsSketchOpen(true)}
-                      className="w-full p-6 border-2 border-dashed border-slate-200 rounded-2xl hover:bg-indigo-50 hover:border-indigo-300 transition-all text-slate-400 hover:text-indigo-600 flex flex-col items-center gap-2 group"
-                    >
-                      <PenTool size={28} className="group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-black uppercase">Grundriss zeichnen</span>
-                      <span className="text-[10px] text-slate-400">Räume, Maße & Schadenspunkte skizzieren</span>
-                    </button>
-                  )}
-                </div>
               </div>
             </div>
-            <div className="p-8 bg-slate-50 border-t flex gap-4">
-              <button onClick={handleCreateReport} disabled={isLoading || !isOnline} className="flex-1 py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-indigo-700 transition-all disabled:opacity-50 active:scale-[0.98]">
-                {isLoading ? <Loader2 className="animate-spin mx-auto" size={24} /> : 'Smart Report erstellen'}
+            
+            {/* Footer - fixed */}
+            <div className="p-5 sm:p-6 bg-slate-50 border-t shrink-0">
+              <button onClick={handleCreateReport} disabled={isLoading || !isOnline} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-indigo-700 transition-all disabled:opacity-50 active:scale-[0.98]">
+                {isLoading ? <Loader2 className="animate-spin mx-auto" size={24} /> : 'Report erstellen'}
               </button>
-            </div>
-            {!isOnline && (
-              <div className="px-8 pb-6 -mt-2">
-                <p className="text-xs text-orange-600 font-bold text-center">
-                  ⚠️ Keine Internetverbindung. KI-Generierung nicht möglich.
+              {!isOnline && (
+                <p className="text-xs text-orange-600 font-bold text-center mt-3">
+                  ⚠️ Offline - KI nicht verfügbar
                 </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
